@@ -1,0 +1,283 @@
+\documentclass{article}
+
+
+\usepackage{arxiv}
+
+\usepackage[utf8]{inputenc} % allow utf-8 input
+\usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+\usepackage{hyperref}       % hyperlinks
+\usepackage{url}            % simple URL typesetting
+\usepackage{booktabs}       % professional-quality tables
+\usepackage{amsfonts}       % blackboard math symbols
+\usepackage{nicefrac}       % compact symbols for 1/2, etc.
+\usepackage{microtype}      % microtypography
+\usepackage{lipsum}
+\usepackage{amsmath}
+
+\title{Stochastic Optimization for PCA and PLS \\
+Stochastic Optimization of PCA with Capped MSG}
+
+
+\author{
+  Skyler Badge \\
+  Indian Institute of Technology Delhi, India\\
+  \texttt{skyler.badge@gmail.com} \\
+  %% examples of more authors
+%   \And
+%  Elias D.~Striatum \\
+%   Department of Electrical Engineering\\
+%   Mount-Sheikh University\\
+%   Santa Narimana, Levand \\
+%   \texttt{stariate@ee.mount-sheikh.edu} \\
+  %% \AND
+  %% Coauthor \\
+  %% Affiliation \\
+  %% Address \\
+  %% \texttt{email} \\
+  %% \And
+  %% Coauthor \\
+  %% Affiliation \\
+  %% Address \\
+  %% \texttt{email} \\
+  %% \And
+  %% Coauthor \\
+  %% Affiliation \\
+  %% Address \\
+  %% \texttt{email} \\
+}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We study PCA, PLS, and CCA as stochastic optimization problems, of optimizing a population objective based on a sample. We suggest several stochastic approximation (SA) methods for PCA and PLS, and investigate their empirical performance. Ultimately, we propose a novel stochastic approximation algorithm which we refer to as “Matrix Stochastic Gradient” (MSG), as well as a practical variant, Capped MSG. We study the method both theoretically and empirically.
+\end{abstract}
+
+
+% keywords can be removed
+% \keywords{Optimization \and PCA \and PLS \and MSG}
+
+
+\section{Introduction}
+We consider the Principal Component Analysis (PCA), Partial Least Squares (PLS), and Canonical Correlation Analysis (CCA) problems as stochastic optimization problems, of optimizing an objective functional of an unknown distribution based on i.i.d. draws from the distribution.
+
+PCA is typically phrased as a question about a fixed data set: given n vectors in $\mathbb{R}^{d}$, what is the $k$-dimensional subspace that captures most of the variance in the data. It is well known that this subspace is the span of the leading $k$ components of the singular value decomposition of the data matrix. For PLS and CCA we consider covariances and correlations of a joint distribution over a pair of vectors. We focus on the “data-laden” regime, where we have access to effectively as many samples as we would like, and the bottleneck is the required runtime to process these samples.
+
+The straightforward approach is “Sample Average Approximation” (SAA), where we collect a sample of data points, and then optimize an empirical version of the objective on the sample using standard deterministic techniques. As an alternative, we propose Stochastic Approximation (SA) methods for stochastic optimization in PCA, PLS and CCA. The primary advantage we have here is the reduced computational cost and better performance. A single pass is performed over the data and the SA algorithm iteratively updates performs updates, similar to Stochastic Gradient Descent (SGD). The following analysis formalizes PCA, PLS as stochastic optimization problems. We also consider CCA as a stochastic optimization problem, and discuss why it is not amenable to the same type of stochastic optimization approaches as we use for PCA and PLS.
+
+We study methods of SA methods for PCA which include a heuristic “incremental” method(Arora et al., 2012) and the theoretical work on online PCA by Warmuth \& Kuzmin (2008). We borrow from these two approaches and present a novel algorithm for stochastic PCA—the Matrix Stochastic Gradient (MSG) algorithm. MSG enjoys similar iteration complexity to Warmuth’s and Kuzmin’s algorithm, and in fact we present a unified view of both algorithms as different instantiations of Mirror Descent for the same convex relaxation of PCA. Furthermore, we present a Capped MSG algorithm which is a practical variant of the MSG and does not get stuck like the incremental method. 
+
+
+\section{Principal Component Analysis (PCA)}
+The problem here is to find the maximal (uncentered) variance k-dimensional subspace with respect to a distribution over $x\in \mathbb{R} ^{d}$. Parameterizing the subspace through a matrix $U\in \mathbb{R} ^{d\times k}$ with columns spanning it, we consider the following specification of PCA:
+\begin{equation}\label{eq:1} 
+\underset{U}{\mathrm{maximize :\ }}{E}_{x}\left[ tr\left( U^{T}xx^{T}U\right)\right] \\
+\end{equation}
+\begin{equation}
+\mathrm{subject\ to :\ }UU^{T}\leq I
+\end{equation}
+We wish to find an optimum U in which all the eigenvalues of U would be 1, and the columns would be orthonormal. We consider all U with eigenvalues at most 1 to be feasible. The existing approach is SAA, and its overall runtime is $O\left( Td^{2}\right) $ and $O\left( d^{2}\right)$ memory. T is the number of samples required to ensure the empirical minimizer is $\epsilon$-suboptimal. A bound to the spectral norm is provided by Tropp which serves as a baseline. An alternative provided is SA with shorter runtime per sample producing a solution of the same quality. In spite of the number of samples required being higher, the computational cost is lower due to updates linear in size of U in each iteration to update U.
+
+\subsection{Stochastic Power Method and Variants}
+
+The PCA objective function is convex, as is the constraint (as in Equation \ref{eq:1}), but as the goal is maximization of this objective, the formulation of Equation \ref{eq:1} is not convex as an optimization problem. However, gradient descent is still a viable algorithm. The updates performed are of the form $U^{\left( t+1\right) }=P_{orth}\left( U^{\left( t\right) }+\eta _{t}\Sigma U^{\left( t\right) }\right)$, where $P_{orth}(U)$ performs a projection with respect to the spectral norm of $UU^{T}$ onto the set of $d\timesd$ matrices with k eigenvalues equal to 1 and the rest 0. The optimal step size is infinite. This yields the power method. We see that $E\left[ xx^{T}\right] =\Sigma $ and take a step in the stochastic gradient direction:
+\begin{equation}
+U^{\left( t+1\right) }=P_{orth}\left( U^{\left( t\right) }+\eta _{t}x_{t}x^{T}_{t}U^{\left( t\right) }\right) 
+\end{equation}
+calculating $\SigmaU$ would require $O\left( kd^{2}\right)$ operations, finding $xx^{T}U$ requires only $O\left( kd\right)$. Renormalization is not necessary and may be performed for numerical reasons. The computational cost for T iterations is $O\left(Tkd\right)$ operations and $O\left(kd\right)$ memory which are better by a factor of $\frac{d}{k}$ than merely calculating the empirical second-moment matrix over T samples.
+
+\subsection{Incremental PCA}
+We propose another approach to PCA inspired by an incremental algorithm for finding the Singular Value Decomposition (SVD). We consider the setting where the examples are processed one at a time, resulting in a rank-one update to the unnormalized empirical second-moment matrix at each iteration. The update we propose can be expressed as:
+\begin{equation}\label{eq:2} 
+    C^{\left( t\right) }=P_{rank-k}\left( C^{\left( t-1\right) }+x_{t}x^{T}_{t}\right) 
+\end{equation}
+Efficient updates of this equation can be performed in $O\left( k^{3}\right)$ time complexity. We use only the top k eigenvalues and eigenvectors. It has a low space complexity of $O\left( kd\right)$ which is better by $\frac{d}{k}$ than classical approaches. The overall runtime of the algorithm is $O\left( Tk^{2}d\right)$, better by $\frac{d}{k^{2}}$ than the cost of calculating the empirical second-moment matrix. This technique is parameter free, unlike the SGD algorithm. The algorithm fails to converge if the data is orthogonal, but such a case is less probable in practice.
+
+\subsection{Online PCA}
+We propose a technique to dramatically improve the computational efficiency of the online algorithm introduced by Warmuth \& Kuzmin. Instead of finding a matrix U of k column vectors spanning the maximal subspace, we find a matrix U’ of $d - k$ columns spanning the minimal subspace. U can be easily obtained from U’. Another improvement is using a projection matrix M onto $d - k$ dimensional minimal subspace. This is not a convex problem but made convex using a convex hull. The new optimization problem is thus, 
+\begin{equation}
+\underset{M}{\mathrm{minimize :\ }}{E}_{x}\left[ tr\left( Mxx^{T}\right)\right] \\
+\end{equation}
+\begin{equation}
+\mathrm{subject\ to :\ }M\geq 0,\ \left\| M\right\| _{2}\leq \dfrac {1}{d-k},\ tr\left( M\right) =1
+\end{equation}
+Here, $\left\| M\right\| _{2}$ is the spectral norm, and we have scaled $M$ by $\frac{1}{d-k}$. We then perform capping and scaling operations. Using a constant step size, and assuming $\left\| x\right\| _{2} <=1$, we get after T iterations:
+\begin{equation}
+    T\geq 0\left( \left( \dfrac {\left( d-k\right) tr\left( M\times \Sigma \right) +\varepsilon }{\varepsilon }\right) \dfrac {k\log \dfrac {d}{k}}{\varepsilon }\right) 
+\end{equation}
+The iterates $M^{(t)}$ will satisfy,
+\begin{equation}
+    E\left[ \dfrac {1}{T}\sum ^{T}_{t=1}tr\left( \left( d-k\right) M^{\left( t\right) }\Sigma \right) \right] -tr\left( \left( d-k\right) M\times \Sigma \right) \leq \varepsilon 
+\end{equation}
+The two full rank eigendecompositions are computationally expensive and can be reduced by keeping an up to date eigendecomposition of M throughout a run of the algorithm.
+Eigenvectors corresponding to repeated eigenvalues need not be stored, reducing the memory cost to $O\left( k'd\right)$. k’ in practice is often less than $d-1$. We use an approach simpler than Warmuth \& Kuzmin by taking the eigenvectors corresponding to the minimal k eigenvalues of $M^{(t)}$ and use only the last iterate instead of the average.
+
+\section{MSG And MEG}
+For the stochastic power method, the updates are performed as in Equation \ref{eq:2}. Calculating the step size is difficult, and the convergence rate is unknown. We perform reparameterization converting the PCA problem to:
+\begin{equation}\label{eq:3} 
+\mathrm{maximize :\ }E_{x\sim D}\left[ x^{T}Mx\right]
+\end{equation}
+\begin{equation}
+\mathrm{subject\ to :\ }M\in \mathbb{R} ^{d\times d},\lambda _{i}\left( M\right) \in \left\{ 0,1\right\} ,rank\left( M\right) =k
+\end{equation}
+The constraints are not convex, leading us to relax the objective by taking the convex hull of the feasible region:
+\begin{equation}\label{eq:4} 
+\mathrm{maximize :\ }E_{x\sim D}\left[ x^{T}Mx\right]
+\end{equation}
+\begin{equation}
+\mathrm{subject\ to :\ }M\in \mathbb{R} ^{d\times d},0\leq M\leq I,tr\left( M\right) =k
+\end{equation}
+The solution to this problem is also a solution to the previous one. We can get a rank-k solution for the previous problem as stated in ‘Lemma 3.1’
+\textbf{Lemma 3.1} (Rounding (Warmuth \& Kuzmin, 2008)). \textit{Any feasible solution of Problem \ref{eq:4} can be expressed as a convex combination ofat most d feasible solutions of Problem \ref{eq:3}.}
+\subsection{Matrix Stochastic Gradient (MSG):}
+Performing SGD on Problem \ref{eq:4} yields the following update rule:
+\begin{equation}\label{eq:5}
+    M^{\left( t+1\right) }=P\left( M^{\left( t\right) }+\eta x_{t}x^{T}_{t}\right) 
+\end{equation}
+The projection is now performed onto the (convex) constraints of Problem \ref{eq:4}.This gives the Matrix Stochastic Gradient (MSG) algorithm. The steps of the algorithm are as follows:
+\begin{enumerate}
+    \item Choose a step-size $\eta$, iteration count T, and starting point $M^{(0)}$.
+    \item Iterate the update rule (Equation \ref{eq:5}) T times, each time using an independent sample $x_{t}\sim D$.
+    \item Average the iterates as $\overline {M}=\dfrac {1}{T}\sum ^{T}_{t=1}M^{\left( t\right) }$.
+    \item Sample a rank-k solution $\begin{aligned}\sim \\
+M\end{aligned}$ from $\overline {M}$ using the rounding procedure discussed in the previous section.
+\end{enumerate}
+Analyzing MSG is straightforward using a standard SGD analysis.
+
+We wish to improve the computational cost for the MSG code from $O\left( d^{2}\right) $ memory and $O\left( d^{2}\right) $ operations per iteration by maintaining an up-to-date eigendecomposition of $M^{(t)}$.
+
+\textbf{Lemma 3.2} states that the projection of M’ as per the feasible region of the problem is a matrix M with the same eigenvectors as M’ and the associated eigenvalues satisfy:
+\begin{equation}
+    \sigma _{i}=\max \left( 0,\min \left( 1,\sigma _{i}'+s\right) \right)
+\end{equation}
+with $S \in \mathbb{R}$ being chosen in such a way that $\sum ^{d}_{i=1}\sigma _{i}=k$.
+This result shows that projecting onto the feasible region amounts to finding the value of S such that, after shifting the eigenvalues by S and clipping the results to [0, 1], the result is feasible. The projection only operates on eigenvalues. To make this process efficient, the repeated eigenvalues are dropped. Indices above or below given thresholds would be clipped to 0 or 1 respectively. We search through a list of all possible pairs of such thresholds until we find a suitable one. The rank one updates make the MSG updates efficient requiring $O\left( dk_{t}\right) $ memory and $O\left( dk^{2}_{t}\right) $ operations per iteration provided that the rank is low.
+
+\subsection{Matrix Exponentiated Gradient (MEG):}
+Mirror Descent depends on a choice of “potential function” $\Psi \left( \cdot \right) $ which should be chosen according to the geometry of the feasible set and the subgradients. This algorithm uses multiplicative updates due to the potential function:
+\begin{equation}
+    \Psi \left( M\right) =\sum _{i}\lambda _{i}\left( m\right) \log \lambda _{i}\left( M\right)
+\end{equation}
+Using the entropy potential does not lead to a better dependence on d or k leading to a loss of $\frac{k}{T}^{0.5}$.
+MSG has a total runtime of $O\left( k^{2}dk/\epsilon^{2}\right)$ , where $k^{2}=\sum ^{T}_{t=1}k^{2}_{t}$ which depends on the rank of its iterates. $k_{t}$ is usually lower that d because of rank-one updates followed by a projection onto the constraints. An MSG update at most can increase the rank of its iterates by one. Observations show that the iterates usually have a relatively low rank. Analysis of MSG algorithm on challenging distributions showed that eigenvalues of the MSG iterates evolve over time. Many of the eigenvalues obtained are very small and leave the state matrix after a few iterations. Likewise, this serves as a motivation to put a constraint on $k_{t}$ giving rise to the capped MSG.
+
+\section{Capped MSG}
+The MSGs iterates generally have ranks smaller than d and larger than k. Hence, we define a cap K over the rank of its iterates:
+\begin{equation}\label{eq:6} 
+\mathrm{maximize :\ }E_{x\sim D}\left[ x^{T}Mx\right]
+\end{equation}
+\begin{equation}
+\mathrm{subject\ to :\ }M\in \mathbb{R} ^{d\times d},0\leq M\leq I,tr\left( M\right) =k,rank\left( M\right) \leq K
+\end{equation}
+This problem is not convex. If this algorithm converges to a solution of $rank < K$, it must be the global optimum. The appropriate value of K is, hence, k+1. Setting K=k causes all non-zero eigenvalues to be equal to one. The only difference between the implementation of MSG and capped MSG is in the projection step. The total operations required are $O\left( K^{2}\log K\right) $ to check at most K possibilities during an update. The overall runtime is $O\left(k^{2}d\right) $.
+
+The incremental PCA algorithm does not have a step size whereas the MSG algorithm does. Updates can be performed in a similar manner to the MSG. The capped MSG does not get stuck like the incremental algorithm due to the orthogonality of data since it uses the additional dimensions to search in a new direction. The capped MSG has a flat region before converging to the optimal solution in such situations.
+
+\section{Stochastic Optimization for PLS}
+% add notations from here
+Many machine learning problems benefit from multiple “views” of the data, possibly from different measurement modalities. In such multi-view learning problems, a common representation of the two views is provided by the shared semantic space
+In order to formulate PLS as a stochastic optimization problem, consider a joint distribution over pairs of vectors x ∈ Rdx and y ∈ Rdy . A k-dimensional PLS solution can be parameterized by a pair of matrices U ∈ Rdx×k and time. Furthermore,V ∈ Rdy×k, where the corresponding columns of U and V represent corresponding covarying directions. The PLS problem can now be expressed as:
+
+
+
+\subsubsection{Headings: third level}
+\lipsum[6]
+
+\paragraph{Paragraph}
+\lipsum[7]
+
+\section{Examples of citations, figures, tables, references}
+\label{sec:others}
+\lipsum[8] \cite{kour2014real,kour2014fast} and see \cite{hadash2018estimate}.
+
+The documentation for \verb+natbib+ may be found at
+\begin{center}
+  \url{http://mirrors.ctan.org/macros/latex/contrib/natbib/natnotes.pdf}
+\end{center}
+Of note is the command \verb+\citet+, which produces citations
+appropriate for use in inline text.  For example,
+\begin{verbatim}
+   \citet{hasselmo} investigated\dots
+\end{verbatim}
+produces
+\begin{quote}
+  Hasselmo, et al.\ (1995) investigated\dots
+\end{quote}
+
+\begin{center}
+  \url{https://www.ctan.org/pkg/booktabs}
+\end{center}
+
+
+\subsection{Figures}
+\lipsum[10] 
+See Figure \ref{fig:fig1}. Here is how you add footnotes. \footnote{Sample of the first footnote.}
+\lipsum[11] 
+
+\begin{figure}
+  \centering
+  \fbox{\rule[-.5cm]{4cm}{4cm} \rule[-.5cm]{4cm}{0cm}}
+  \caption{Sample figure caption.}
+  \label{fig:fig1}
+\end{figure}
+
+\subsection{Tables}
+\lipsum[12]
+See awesome Table~\ref{tab:table}.
+
+\begin{table}
+ \caption{Sample table title}
+  \centering
+  \begin{tabular}{lll}
+    \toprule
+    \multicolumn{2}{c}{Part}                   \\
+    \cmidrule(r){1-2}
+    Name     & Description     & Size ($\mu$m) \\
+    \midrule
+    Dendrite & Input terminal  & $\sim$100     \\
+    Axon     & Output terminal & $\sim$10      \\
+    Soma     & Cell body       & up to $10^6$  \\
+    \bottomrule
+  \end{tabular}
+  \label{tab:table}
+\end{table}
+
+\subsection{Lists}
+\begin{itemize}
+\item Lorem ipsum dolor sit amet
+\item consectetur adipiscing elit. 
+\item Aliquam dignissim blandit est, in dictum tortor gravida eget. In ac rutrum magna.
+\end{itemize}
+
+
+\bibliographystyle{unsrt}  
+%\bibliography{references}  %%% Remove comment to use the external .bib file (using bibtex).
+%%% and comment out the ``thebibliography'' section.
+
+
+%%% Comment out this section when you \bibliography{references} is enabled.
+\begin{thebibliography}{1}
+
+\bibitem{kour2014real}
+George Kour and Raid Saabne.
+\newblock Real-time segmentation of on-line handwritten arabic script.
+\newblock In {\em Frontiers in Handwriting Recognition (ICFHR), 2014 14th
+  International Conference on}, pages 417--422. IEEE, 2014.
+
+\bibitem{kour2014fast}
+George Kour and Raid Saabne.
+\newblock Fast classification of handwritten on-line arabic characters.
+\newblock In {\em Soft Computing and Pattern Recognition (SoCPaR), 2014 6th
+  International Conference of}, pages 312--318. IEEE, 2014.
+
+\bibitem{hadash2018estimate}
+Guy Hadash, Einat Kermany, Boaz Carmeli, Ofer Lavi, George Kour, and Alon
+  Jacovi.
+\newblock Estimate and replace: A novel approach to integrating deep neural
+  networks with existing applications.
+\newblock {\em arXiv preprint arXiv:1804.09028}, 2018.
+
+\end{thebibliography}
+
+
+\end{document}
