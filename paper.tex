@@ -80,11 +80,11 @@ We wish to find an optimum U in which all the eigenvalues of U would be 1, and t
 
 \subsection{Stochastic Power Method and Variants}
 
-The PCA objective function is convex, as is the constraint (as in Equation \ref{eq:1}), but as the goal is maximization of this objective, the formulation of Equation \ref{eq:1} is not convex as an optimization problem. However, gradient descent is still a viable algorithm. The updates performed are of the form $U^{\left( t+1\right) }=P_{orth}\left( U^{\left( t\right) }+\eta _{t}\Sigma U^{\left( t\right) }\right)$, where $P_{orth}(U)$ performs a projection with respect to the spectral norm of $UU^{T}$ onto the set of $d\timesd$ matrices with k eigenvalues equal to 1 and the rest 0. The optimal step size is infinite. This yields the power method. We see that $E\left[ xx^{T}\right] =\Sigma $ and take a step in the stochastic gradient direction:
+The PCA objective function is convex, as is the constraint (as in Equation \ref{eq:1}), but as the goal is maximization of this objective, the formulation of Equation \ref{eq:1} is not convex as an optimization problem. However, gradient descent is still a viable algorithm. The updates performed are of the form $U^{\left( t+1\right) }=P_{orth}\left( U^{\left( t\right) }+\eta _{t}\Sigma U^{\left( t\right) }\right)$, where $P_{orth}(U)$ performs a projection with respect to the spectral norm of $UU^{T}$ onto the set of $d\times d$ matrices with k eigenvalues equal to 1 and the rest 0. The optimal step size is infinite. This yields the power method. We see that $E\left[ xx^{T}\right] =\Sigma $ and take a step in the stochastic gradient direction:
 \begin{equation}
 U^{\left( t+1\right) }=P_{orth}\left( U^{\left( t\right) }+\eta _{t}x_{t}x^{T}_{t}U^{\left( t\right) }\right) 
 \end{equation}
-calculating $\SigmaU$ would require $O\left( kd^{2}\right)$ operations, finding $xx^{T}U$ requires only $O\left( kd\right)$. Renormalization is not necessary and may be performed for numerical reasons. The computational cost for T iterations is $O\left(Tkd\right)$ operations and $O\left(kd\right)$ memory which are better by a factor of $\frac{d}{k}$ than merely calculating the empirical second-moment matrix over T samples.
+calculating $\Sigma$ would require $O\left( kd^{2}\right)$ operations, finding $xx^{T}U$ requires only $O\left( kd\right)$. Renormalization is not necessary and may be performed for numerical reasons. The computational cost for T iterations is $O\left(Tkd\right)$ operations and $O\left(kd\right)$ memory which are better by a factor of $\frac{d}{k}$ than merely calculating the empirical second-moment matrix over T samples.
 
 \subsection{Incremental PCA}
 We propose another approach to PCA inspired by an incremental algorithm for finding the Singular Value Decomposition (SVD). We consider the setting where the examples are processed one at a time, resulting in a rank-one update to the unnormalized empirical second-moment matrix at each iteration. The update we propose can be expressed as:
@@ -101,9 +101,14 @@ We propose a technique to dramatically improve the computational efficiency of t
 \begin{equation}
 \mathrm{subject\ to :\ }M\geq 0,\ \left\| M\right\| _{2}\leq \dfrac {1}{d-k},\ tr\left( M\right) =1
 \end{equation}
-Here, $\left\| M\right\| _{2}$ is the spectral norm, and we have scaled $M$ by $\frac{1}{d-k}$. We then perform capping and scaling operations. Using a constant step size, and assuming $\left\| x\right\| _{2} <=1$, we get after T iterations:
+Here, $\left\| M\right\| _{2}$ is the spectral norm, and we have scaled $M$ by $\frac{1}{d-k}$. We then perform capping and scaling operations. The updates performed are:
+\begin{equation}\label{eq:7}
+    M^{\left( t+1\right) }=P_{RE}\left( \exp \left( \ln M^{\left( t\right) }-\eta _{t}x_{t}x^{T}_{t}\right) \right) 
+\end{equation}
+
+Using a constant step size, and assuming $\left\| x\right\| _{2} <=1$, after T iterations we get:
 \begin{equation}
-    T\geq 0\left( \left( \dfrac {\left( d-k\right) tr\left( M\times \Sigma \right) +\varepsilon }{\varepsilon }\right) \dfrac {k\log \dfrac {d}{k}}{\varepsilon }\right) 
+    T\geq O\left( \left( \dfrac {\left( d-k\right) tr\left( M\times \Sigma \right) +\varepsilon }{\varepsilon }\right) \dfrac {k\log \dfrac {d}{k}}{\varepsilon }\right) 
 \end{equation}
 The iterates $M^{(t)}$ will satisfy,
 \begin{equation}
@@ -112,7 +117,7 @@ The iterates $M^{(t)}$ will satisfy,
 The two full rank eigendecompositions are computationally expensive and can be reduced by keeping an up to date eigendecomposition of M throughout a run of the algorithm.
 Eigenvectors corresponding to repeated eigenvalues need not be stored, reducing the memory cost to $O\left( k'd\right)$. k’ in practice is often less than $d-1$. We use an approach simpler than Warmuth \& Kuzmin by taking the eigenvectors corresponding to the minimal k eigenvalues of $M^{(t)}$ and use only the last iterate instead of the average.
 
-\section{MSG And MEG}
+\section{MSG and MEG}
 For the stochastic power method, the updates are performed as in Equation \ref{eq:2}. Calculating the step size is difficult, and the convergence rate is unknown. We perform reparameterization converting the PCA problem to:
 \begin{equation}\label{eq:3} 
 \mathrm{maximize :\ }E_{x\sim D}\left[ x^{T}Mx\right]
@@ -128,7 +133,8 @@ The constraints are not convex, leading us to relax the objective by taking the 
 \mathrm{subject\ to :\ }M\in \mathbb{R} ^{d\times d},0\leq M\leq I,tr\left( M\right) =k
 \end{equation}
 The solution to this problem is also a solution to the previous one. We can get a rank-k solution for the previous problem as stated in ‘Lemma 3.1’
-\textbf{Lemma 3.1} (Rounding (Warmuth \& Kuzmin, 2008)). \textit{Any feasible solution of Problem \ref{eq:4} can be expressed as a convex combination ofat most d feasible solutions of Problem \ref{eq:3}.}
+
+\textbf{Lemma 3.1} (Rounding (Warmuth \& Kuzmin, 2008)). \textit{Any feasible solution of Problem \ref{eq:4} can be expressed as a convex combination of at most d feasible solutions of Problem \ref{eq:3}.}
 \subsection{Matrix Stochastic Gradient (MSG):}
 Performing SGD on Problem \ref{eq:4} yields the following update rule:
 \begin{equation}\label{eq:5}
@@ -174,80 +180,79 @@ This problem is not convex. If this algorithm converges to a solution of $rank <
 The incremental PCA algorithm does not have a step size whereas the MSG algorithm does. Updates can be performed in a similar manner to the MSG. The capped MSG does not get stuck like the incremental algorithm due to the orthogonality of data since it uses the additional dimensions to search in a new direction. The capped MSG has a flat region before converging to the optimal solution in such situations.
 
 \section{Stochastic Optimization for PLS}
-% add notations from here
+
 Many machine learning problems benefit from multiple “views” of the data, possibly from different measurement modalities. In such multi-view learning problems, a common representation of the two views is provided by the shared semantic space
-In order to formulate PLS as a stochastic optimization problem, consider a joint distribution over pairs of vectors x ∈ Rdx and y ∈ Rdy . A k-dimensional PLS solution can be parameterized by a pair of matrices U ∈ Rdx×k and time. Furthermore,V ∈ Rdy×k, where the corresponding columns of U and V represent corresponding covarying directions. The PLS problem can now be expressed as:
+In order to formulate PLS as a stochastic optimization problem, consider a joint distribution over pairs of vectors $x\in \mathbb{R} ^{d_{x}}$ and $y\in \mathbb{R} ^{d_{y}}$ . A k-dimensional PLS solution can be parameterized by a pair of matrices $U\in \mathbb{R} ^{d_{x}\times k}$ and $V\in \mathbb{R} ^{d_{y}\times k}$, where the corresponding columns of U and V represent corresponding covarying directions. The PLS problem can now be expressed as:
+\begin{equation}
+\underset{U,V}{\mathrm{maximize :\ }}E_{x,y}\left[ tr\left( U^{T}xy^{T}V\right) \right] 
+\end{equation}
+\begin{equation}
+\mathrm{subject\ to :\ }U^{T}U=I,V^{T}V=I
+\end{equation}
+We now extend the methods presented for PCA for PLS.
 
+\subsection{SGD for PLS:}
+Here instead of observing only x, we observe the pair (x,y) at each iteration. The updates are similar to that of the PCA power method:
+\begin{equation}
+    U^{\left( t+1\right) }=P_{orth}\left( U^{\left( t\right) }+\eta _{t}x_{t}y^{T}_{t}V^{\left( t\right) }\right) 
+\end{equation}
+\begin{equation}
+    V^{\left( t+1\right) }=P_{orth}\left( V^{\left( t\right) }+\eta _{t}y_{t}x^{T}_{t}U^{\left( t\right) }\right) 
+\end{equation}
+The space complexity of the resulting algorithm is the sum
+of the sizes of U and V: $O\left( k\left( d_{x}+d_{y}\right) \right) $. The time complexity per iteration is $O\left( k\left( d_{x}+d_{y}\right) \right) $, for a total of $O\left( Tk\left( d_{x}+d_{y}\right) \right) $. These are superior to the $O\left( d_{x}+d_{y}\right) $ space complexity and $O\left( T\left( d_{x}+d_{y}\right) \right) $ computational cost of calculating $\widehat {C}_{XY}$.
 
+\subsection{Incremental PLS:}
+We maintain a rank k estimate of $C^{\left( t-1\right) }_{XY}$ of the SVD of the empirical cross-second-matrix $\sum ^{t-1}_{s=1}x_{s}y^{T}_{s}$. We perform rank-one updates according to:
+\begin{equation}
+    C^{\left( t\right) }_{XY}=P_{rank-k}\left( C^{\left( t-1\right) }_{XY}+x_{t}y^{T}_{t}\right) 
+\end{equation}
+Efficient updates can be performed similar to its PCA counterpart. The space complexity is $O\left( k\left( d_{x}+d_{y}\right) \right) $ whereas the time complexity is $O\left( k^{2}\left( d_{x}+d_{y}\right) \right)$.
 
-\subsubsection{Headings: third level}
-\lipsum[6]
+\subsection{Online PLS:}
+We first symmetrize the PLS objective by making use of a self-adjoint dilation of the matrix $\Sigma_{XY}$:
+\begin{equation}
+    \Gamma =\begin{bmatrix}
+0 & \Sigma _{XY} \\
+\Sigma _{XY} & 0
+\end{bmatrix}=E_{XY}\begin{bmatrix}
+0 & xy^{T} \\
+yx^{T} & 0
+\end{bmatrix}
+\end{equation}
+We modify the online PCA equation to be:
+\begin{equation}
+\underset{M}{\mathrm{minimize :\ }}E_{x,y}\left[ tr\left( M\begin{bmatrix}
+0 & xy^{T} \\
+yx^{T} & 0
+\end{bmatrix}\right) \right]  
+\end{equation}
+\begin{equation}
+\mathrm{subject\ to :\ }M\geq 0,\left\| M\right\| _{2}\leq \dfrac {1}{d-k},tr\left( M\right) =1
+\end{equation}
+which leads us to change the update of Equation \ref{eq:7} to:
+\begin{equation}
+    M^{\left( t+1\right) }=P_{RE}\left( \exp \left( \ln M^{\left( t\right) }-\eta _{t}Z_{t}\right) \right) 
+\end{equation}
+Here, $\Gamma$ and $Z_{t}$ have negative eigenvalues. A rank 2 update is now performed instead of a rank 1 update. In some cases, the resulting U and V will have orthogonal columns. We resolve this by the simple expedient of taking the orthonormalized $U\left( U^{T}U\right) ^{-0.5}$ and $V\left( V^{T}V\right) ^{-0.5}$ as our approximate singular vectors.
 
-\paragraph{Paragraph}
-\lipsum[7]
+\section{Stochastic Optimization for CCA:}
+We again consider a joint distribution over pairs of vectors $x\in \mathbb{R} ^{d_{x}}$ and $y\in \mathbb{R} ^{d_{y}}$. Similar to PLS, a k-dimensional CCA solution is parameterized by a pair of matrices $U\in \mathbb{R} ^{d_{x}\times k}$ and $V\in \mathbb{R} ^{d_{y}\times k}$, where the corresponding columns of U and V now represent corresponding correlated directions. The CCA problem can be expressed as:
+\begin{equation}
+\underset{U,V}{\mathrm{maximize :\ }}E_{x,y}\left[ tr\left( U^{T}xy^{T}V\right) \right] 
+\end{equation}
+\begin{equation}
+\mathrm{subject\ to :\ }E_{x}\left[ U^{T}xx^{T}U\right] =I,E_{y}\left[ V^{T}yy^{T}V\right] =I
+\end{equation}
 
-\section{Examples of citations, figures, tables, references}
-\label{sec:others}
-\lipsum[8] \cite{kour2014real,kour2014fast} and see \cite{hadash2018estimate}.
+SAA approach can be used here by replacing matrices $\Sigma_{XX}$, $\Sigma_{XY}$ and $\Sigma_{YY}$ with their empirical (sample based) approximations. It is a problematic stochastic optimization problem since the constraints also involve the unknown distribution.  This leads us to obtain the population objective as:
+\begin{equation}
+    \rho\left( u^{T}x,v^{T}y\right) =\dfrac {E_{xy}\left[ u^{T}xy^{T}v\right] }{\sqrt {E_{x}\left[ u^{T}xx^{T}u\right] }\sqrt {E_{y}\left[ v^{T}yy^{T}v\right] }}
+\end{equation}
+which is an unconstrained optimization problem. CCA is equivalent to PLS after normalization by the matrices $\Sigma_{XX}$ and $\Sigma_{YY}$, and hence, can be reduced to PLS by normalization.
 
-The documentation for \verb+natbib+ may be found at
-\begin{center}
-  \url{http://mirrors.ctan.org/macros/latex/contrib/natbib/natnotes.pdf}
-\end{center}
-Of note is the command \verb+\citet+, which produces citations
-appropriate for use in inline text.  For example,
-\begin{verbatim}
-   \citet{hasselmo} investigated\dots
-\end{verbatim}
-produces
-\begin{quote}
-  Hasselmo, et al.\ (1995) investigated\dots
-\end{quote}
-
-\begin{center}
-  \url{https://www.ctan.org/pkg/booktabs}
-\end{center}
-
-
-\subsection{Figures}
-\lipsum[10] 
-See Figure \ref{fig:fig1}. Here is how you add footnotes. \footnote{Sample of the first footnote.}
-\lipsum[11] 
-
-\begin{figure}
-  \centering
-  \fbox{\rule[-.5cm]{4cm}{4cm} \rule[-.5cm]{4cm}{0cm}}
-  \caption{Sample figure caption.}
-  \label{fig:fig1}
-\end{figure}
-
-\subsection{Tables}
-\lipsum[12]
-See awesome Table~\ref{tab:table}.
-
-\begin{table}
- \caption{Sample table title}
-  \centering
-  \begin{tabular}{lll}
-    \toprule
-    \multicolumn{2}{c}{Part}                   \\
-    \cmidrule(r){1-2}
-    Name     & Description     & Size ($\mu$m) \\
-    \midrule
-    Dendrite & Input terminal  & $\sim$100     \\
-    Axon     & Output terminal & $\sim$10      \\
-    Soma     & Cell body       & up to $10^6$  \\
-    \bottomrule
-  \end{tabular}
-  \label{tab:table}
-\end{table}
-
-\subsection{Lists}
-\begin{itemize}
-\item Lorem ipsum dolor sit amet
-\item consectetur adipiscing elit. 
-\item Aliquam dignissim blandit est, in dictum tortor gravida eget. In ac rutrum magna.
-\end{itemize}
+\section{Results and Conclusions}
+Experimental results show that the incremental algorithm is consistently the best regarding both runtime and progress-per-iteration. The establishments of this paper are an incremental approach for PCA, a faster method for obtaining iterates of Warmuth \& Kuzmin and showing that renormalization at every iteration of the stochastic power method is redundant. The stochastic power method and the truncated incremental approach outperform the SAA approach for PCA. We also establish that the capped MSG is almost as fast as the incremental approach. The capped MSG is less prone to getting stuck at a sub-optimal solution making it much better than the incremental algorithm. Both MSG and MEG can be interpreted as mirror descent algorithms on the same relaxation of the PCA optimization problem but with different distance generating functions. We have yet to obtain an excellent stochastic optimization method for CCA. 
 
 
 \bibliographystyle{unsrt}  
@@ -258,26 +263,14 @@ See awesome Table~\ref{tab:table}.
 %%% Comment out this section when you \bibliography{references} is enabled.
 \begin{thebibliography}{1}
 
-\bibitem{kour2014real}
-George Kour and Raid Saabne.
-\newblock Real-time segmentation of on-line handwritten arabic script.
-\newblock In {\em Frontiers in Handwriting Recognition (ICFHR), 2014 14th
-  International Conference on}, pages 417--422. IEEE, 2014.
+\bibitem{arora1}
+Raman Arora, Andrew Cotter, Karen Livescu and Nathan Srebro.
+\newblock In {\em Stochastic Optimization for PCA and PLS}.
 
-\bibitem{kour2014fast}
-George Kour and Raid Saabne.
-\newblock Fast classification of handwritten on-line arabic characters.
-\newblock In {\em Soft Computing and Pattern Recognition (SoCPaR), 2014 6th
-  International Conference of}, pages 312--318. IEEE, 2014.
-
-\bibitem{hadash2018estimate}
-Guy Hadash, Einat Kermany, Boaz Carmeli, Ofer Lavi, George Kour, and Alon
-  Jacovi.
-\newblock Estimate and replace: A novel approach to integrating deep neural
-  networks with existing applications.
-\newblock {\em arXiv preprint arXiv:1804.09028}, 2018.
+\bibitem{arora2}
+Raman Arora, Andrew Cotter and Nathan Srebro.
+\newblock In {\em Stochastic Optimization of PCA with Capped MSG}.
 
 \end{thebibliography}
-
 
 \end{document}
